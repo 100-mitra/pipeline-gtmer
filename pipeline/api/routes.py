@@ -20,6 +20,18 @@ router = APIRouter()
 STAGES = ["sourced", "researched", "drafted", "scored", "approved"]
 
 
+def _redact_contact(lead: dict) -> dict:
+    """Mask the contact email on the PUBLIC surface (e.g. k****@company.com). Full
+    contact data is served only by the slug-gated /for-gtmer deliverable — sloppy
+    handling of scraped personal data is the last thing to show a founder in this space."""
+    out = dict(lead)
+    email = out.get("contact_email")
+    if email and "@" in email:
+        local, _, domain = email.partition("@")
+        out["contact_email"] = f"{local[0]}****@{domain}"
+    return out
+
+
 @router.get("/healthz")
 def healthz() -> dict[str, bool]:
     return {"ok": True}
@@ -47,7 +59,7 @@ def lead_detail(lead_id: str) -> LeadDetail:
     if not lead:
         raise HTTPException(404, "lead not found")
     return LeadDetail(
-        lead=lead,
+        lead=_redact_contact(lead),  # public surface — email masked; full only on /for-gtmer
         brief=db.get_brief(lead_id),
         emails=db.emails_for_lead(lead_id),
         evals=db.evals_for_lead(lead_id),
