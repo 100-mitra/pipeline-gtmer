@@ -126,7 +126,9 @@ whole point: no single metric is trusted alone.
 - **12 qualified leads** sourced (3 Indian headlining: Postman 🔥, Atlan, Scribe).
 - **κ = 0.85** judge–human agreement on the 30-email golden set.
 - **v2 wins 89%** of blind pairwise vs v1 (promotion bar is 65%).
-- Total spend across every run: **~$2** of a $20 cap.
+- After the loop, **6/8 leads carry approvable, grounded drafts** (9 emails) — the approve
+  gate honestly filters the rest, exactly as designed.
+- Total spend across every run (source → score → 4 prompt iterations): **~$2.5** of a $20 cap.
 
 ## Cost
 
