@@ -50,8 +50,13 @@ def _days_old(posted_at: str | None) -> int | None:
     return None
 
 
-def score_signal(title: str, posted_at: str | None) -> tuple[int, str, str]:
-    """Return (score 0-100, tier hot|warm|cold, evidence)."""
+def score_signal(title: str, posted_at: str | None, india: bool = False) -> tuple[int, str, str]:
+    """Return (score 0-100, tier hot|warm|cold, evidence).
+
+    `india` adds a priority boost: GTMer is India-based, so an Indian B2B SaaS
+    hiring an SDR is the most reachable, most pitch-relevant prospect — it should
+    rank above an equivalent global company in the lead list.
+    """
     match = title_matches(title)
     if match is None:
         return 0, "cold", "no SDR/BDR signal in title"
@@ -66,8 +71,9 @@ def score_signal(title: str, posted_at: str | None) -> tuple[int, str, str]:
             recency = 15
         elif days <= 90:
             recency = 5
-    score = min(100, base + recency)
+    boost = 15 if india else 0
+    score = min(100, base + recency + boost)
     tier = "hot" if score >= 80 else "warm" if score >= 50 else "cold"
     age = f"{days}d old" if days is not None else "age unknown"
-    evidence = f"{match} title match ('{title}'), {age}"
+    evidence = f"{match} title match ('{title}'), {age}" + (" | India-HQ priority" if india else "")
     return score, tier, evidence

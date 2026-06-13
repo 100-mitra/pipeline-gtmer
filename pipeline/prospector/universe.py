@@ -45,12 +45,12 @@ def from_csv(path: Path = CSV_PATH) -> list[Company]:
     return out
 
 
-def _is_india_saas(rec: dict) -> bool:
-    blob = " ".join(
-        str(rec.get(k, "")) for k in ("regions", "all_locations", "location")
-    ).lower()
-    if not any(tok in blob for tok in INDIA_TOKENS):
-        return False
+def is_india(text: str | None) -> bool:
+    """True if a location string names an Indian city/region."""
+    return bool(text) and any(tok in text.lower() for tok in INDIA_TOKENS)
+
+
+def _is_b2b_saas(rec: dict) -> bool:
     tags = [t.lower() for t in rec.get("tags", [])]
     industry = str(rec.get("industry", "")).lower()
     return rec.get("status") != "Dead" and (
@@ -58,33 +58,35 @@ def _is_india_saas(rec: dict) -> bool:
     )
 
 
-def from_yc(limit: int = 200) -> list[Company]:
-    """Download the yc-oss all.json once and filter to India B2B/SaaS client-side."""
+def from_yc(limit: int = 200, india_only: bool = False) -> list[Company]:
+    """Download the yc-oss all.json once and filter to B2B/SaaS client-side.
+
+    India-HQ companies are returned FIRST (most pitch-relevant for GTMer), then
+    global B2B SaaS to broaden the pool past the ~10% of Indian SaaS that use a
+    supported ATS. Set `india_only=True` to restrict to India.
+    """
     try:
         r = httpx.get(YC_ALL_URL, timeout=60)
         r.raise_for_status()
         records = r.json()
     except (httpx.HTTPError, ValueError):
         return []
-    out: list[Company] = []
+    india_list: list[Company] = []
+    world_list: list[Company] = []
     for rec in records:
-        if not _is_india_saas(rec):
+        if not _is_b2b_saas(rec):
             continue
         website = rec.get("website") or ""
         domain = website.replace("https://", "").replace("http://", "").strip("/").split("/")[0]
         if not domain:
             continue
-        out.append(
-            Company(
-                name=rec.get("name", ""),
-                domain=domain,
-                hq_location=(rec.get("all_locations") or rec.get("location") or None),
-                source="yc-oss",
-            )
-        )
-        if len(out) >= limit:
-            break
-    return out
+        loc = rec.get("all_locations") or rec.get("location") or ""
+        company = Company(name=rec.get("name", ""), domain=domain, hq_location=loc or None, source="yc-oss")
+        if is_india(loc) or is_india(str(rec.get("regions", ""))):
+            india_list.append(company)
+        elif not india_only:
+            world_list.append(company)
+    return (india_list + world_list)[:limit]
 
 
 def build_universe(limit: int = 200, include_yc: bool = True) -> list[Company]:

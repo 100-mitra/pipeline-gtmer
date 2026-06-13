@@ -55,11 +55,12 @@ def _best_signal(company: Company) -> QualifiedLead | None:
             return None
         source, token = found
         jobs = ats.fetch_jobs(source, token)
+    india = universe.is_india(company.hq_location)
     best: QualifiedLead | None = None
     for job in jobs:
         if qualify.title_matches(job.title) is None:
             continue
-        score, tier, evidence = qualify.score_signal(job.title, job.posted_at)
+        score, tier, evidence = qualify.score_signal(job.title, job.posted_at, india=india)
         if best is None or score > best.signal_score:
             best = QualifiedLead(
                 company=company, job=job, signal_score=score, signal_tier=tier, evidence=evidence

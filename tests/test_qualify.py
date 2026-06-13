@@ -32,3 +32,18 @@ def test_scoring_tiers_and_recency():
 
     none_score, none_tier, _ = score_signal("Backend Engineer", "2026-06-05")
     assert none_score == 0 and none_tier == "cold"
+
+
+def test_india_boost():
+    base, _, _ = score_signal("Business Development Representative", None)
+    boosted, _, ev = score_signal("Business Development Representative", None, india=True)
+    assert boosted == base + 15
+    assert "India-HQ priority" in ev
+
+
+def test_is_india_detection():
+    from pipeline.prospector.universe import is_india
+    assert is_india("Bengaluru, KA, India")
+    assert is_india("Mumbai")
+    assert not is_india("San Francisco, CA")
+    assert not is_india(None)
