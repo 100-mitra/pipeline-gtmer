@@ -86,7 +86,22 @@ def from_yc(limit: int = 200, india_only: bool = False) -> list[Company]:
             india_list.append(company)
         elif not india_only:
             world_list.append(company)
-    return (india_list + world_list)[:limit]
+    if india_only:
+        return india_list[:limit]
+    # Interleave India (priority, but only ~140 exist and few use a supported ATS)
+    # with the large global pool (high ATS yield), so BOTH get probed within the
+    # limit. Ranking is handled separately by the India scoring boost — probe
+    # order only affects which companies we discover, not how they're ordered.
+    mixed: list[Company] = []
+    i = j = 0
+    while len(mixed) < limit and (i < len(india_list) or j < len(world_list)):
+        if i < len(india_list):
+            mixed.append(india_list[i])
+            i += 1
+        if j < len(world_list) and len(mixed) < limit:
+            mixed.append(world_list[j])
+            j += 1
+    return mixed
 
 
 def build_universe(limit: int = 200, include_yc: bool = True) -> list[Company]:
