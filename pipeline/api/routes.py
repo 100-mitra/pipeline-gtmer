@@ -20,6 +20,20 @@ router = APIRouter()
 STAGES = ["sourced", "researched", "drafted", "scored", "approved"]
 
 
+def _latest_drafts(lead_id: str) -> tuple[list[dict], list[dict]]:
+    """Only the most-recent prompt version's drafts + their evals. A lead
+    accumulates v1/v2/v3 emails across the iteration loop; the dashboard and the
+    deliverable should show the final drafts, not the history (that story lives on
+    the evals page / README)."""
+    emails = db.emails_for_lead(lead_id)
+    if emails:
+        latest = max(emails, key=lambda e: e["created_at"])["prompt_version"]
+        emails = [e for e in emails if e["prompt_version"] == latest]
+    eids = {e["id"] for e in emails}
+    evals = [e for e in db.evals_for_lead(lead_id) if e.get("email_id") in eids]
+    return emails, evals
+
+
 def _redact_contact(lead: dict) -> dict:
     """Mask the contact email on the PUBLIC surface (e.g. k****@company.com). Full
     contact data is served only by the slug-gated /for-gtmer deliverable — sloppy
@@ -58,11 +72,12 @@ def lead_detail(lead_id: str) -> LeadDetail:
     lead = db.get_lead(lead_id)
     if not lead:
         raise HTTPException(404, "lead not found")
+    emails, evals = _latest_drafts(lead_id)
     return LeadDetail(
         lead=_redact_contact(lead),  # public surface — email masked; full only on /for-gtmer
         brief=db.get_brief(lead_id),
-        emails=db.emails_for_lead(lead_id),
-        evals=db.evals_for_lead(lead_id),
+        emails=emails,
+        evals=evals,
     )
 
 
@@ -128,12 +143,13 @@ def for_gtmer(slug: str) -> dict:
     leads = db.leads_by_stage("approved")
     payload = []
     for lead in leads:
+        emails, evals = _latest_drafts(lead["id"])  # final v3 drafts only — the clean deliverable
         payload.append(
             {
                 "lead": lead,
                 "brief": db.get_brief(lead["id"]),
-                "emails": db.emails_for_lead(lead["id"]),
-                "evals": db.evals_for_lead(lead["id"]),
+                "emails": emails,
+                "evals": evals,
             }
         )
     return {"count": len(payload), "leads": payload}
