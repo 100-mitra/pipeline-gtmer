@@ -44,3 +44,25 @@ def test_ashby_normalization(monkeypatch):
 def test_bad_payload_is_safe(monkeypatch):
     monkeypatch.setattr(ats, "_get_json", lambda url: None)
     assert ats.fetch_jobs("greenhouse", "acme") == []
+
+
+def test_guess_tokens():
+    assert ats.guess_tokens("Postman", "postman.com")[0] == "postman"
+    assert ats.guess_tokens("Atlan", "atlan.com")[0] == "atlan"
+    # domain label and de-spaced name both offered, de-duped, no empties
+    toks = ats.guess_tokens("Lead Squared", "leadsquared.com")
+    assert "leadsquared" in toks and len(toks) == len(set(toks)) and all(toks)
+
+
+def test_resolve_board_uses_guessed_token(monkeypatch):
+    # greenhouse:acme has jobs -> returned without touching any careers page HTML
+    monkeypatch.setattr(ats, "_get_json", lambda url: GREENHOUSE if "acme" in url else None)
+    res = ats.resolve_board("Acme", "acme.com")
+    assert res is not None
+    source, token, jobs = res
+    assert source == "greenhouse" and token == "acme" and len(jobs) == 2
+
+
+def test_resolve_board_none_when_no_board(monkeypatch):
+    monkeypatch.setattr(ats, "_get_json", lambda url: None)
+    assert ats.resolve_board("Nobody", "nobody.invalid") is None

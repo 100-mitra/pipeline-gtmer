@@ -104,3 +104,29 @@ _FETCHERS = {"greenhouse": fetch_greenhouse, "lever": fetch_lever, "ashby": fetc
 def fetch_jobs(source: str, token: str) -> list[JobSignal]:
     fetcher = _FETCHERS.get(source)
     return fetcher(token) if fetcher else []
+
+
+def guess_tokens(name: str, domain: str) -> list[str]:
+    """Candidate board tokens for a company. Greenhouse/Lever/Ashby tokens are
+    almost always the company slug, so probing the API directly with a guessed
+    token works even when the careers page is JS-rendered (most of them are) —
+    which plain HTML token-discovery cannot handle."""
+    label = domain.split(".")[0].lower()
+    nm = "".join(ch for ch in name.lower() if ch.isalnum())
+    cands = [label, nm, label.replace("-", ""), nm.removesuffix("hq")]
+    seen: set[str] = set()
+    return [t for t in cands if t and not (t in seen or seen.add(t))]
+
+
+def resolve_board(name: str, domain: str) -> tuple[str, str, list[JobSignal]] | None:
+    """Find a live ATS board by probing guessed tokens across all three ATSes.
+    Returns (source, token, jobs) for the first board with >=1 posting, else None.
+    Note: a board is accepted on token match + non-empty jobs; for a distinctive
+    slug a collision is unlikely, and the research step scrapes the lead's own
+    domain regardless, so a mis-attributed posting can't poison the brief."""
+    for tok in guess_tokens(name, domain):
+        for source in _FETCHERS:
+            jobs = fetch_jobs(source, tok)
+            if jobs:
+                return source, tok, jobs
+    return None

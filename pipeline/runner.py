@@ -22,35 +22,41 @@ from pipeline.prospector import ats, qualify, universe
 from pipeline import trace
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; gtmer-prospect/0.1)"}
-CAREERS_PATHS = ["/careers", "/jobs", "/company/careers", ""]
 
 
 # ── Prospecting ──────────────────────────────────────────────────────
 def _resolve_token(company: Company) -> tuple[str, str] | None:
-    urls = []
-    if company.careers_url:
-        urls.append(company.careers_url)
-    base = f"https://{company.domain.rstrip('/')}"
-    urls += [base + p for p in CAREERS_PATHS]
-    for url in urls:
-        try:
-            r = httpx.get(url, headers=HEADERS, timeout=12, follow_redirects=True)
-            if r.status_code == 200:
-                found = ats.discover_token(r.text)
-                if found:
-                    return found
-        except httpx.HTTPError:
-            continue
+    """Fallback token discovery from an explicit `careers_url` (for the rare board
+    whose token isn't the company slug). Blind path-probing (/careers, /jobs, …)
+    was dropped: empirically it found ~0 tokens — most careers pages are
+    JS-rendered — while costing up to a minute per company. Guessed-token probing
+    in `ats.resolve_board` is the primary, reliable path."""
+    if not company.careers_url:
+        return None
+    try:
+        r = httpx.get(company.careers_url, headers=HEADERS, timeout=12, follow_redirects=True)
+        if r.status_code == 200:
+            return ats.discover_token(r.text)
+    except httpx.HTTPError:
+        return None
     return None
 
 
 def _best_signal(company: Company) -> QualifiedLead | None:
-    found = _resolve_token(company)
-    if not found:
-        return None
-    source, token = found
+    # Primary: probe guessed board tokens directly against the ATS APIs (works
+    # even for JS-rendered careers pages). Fallback: parse a token out of the
+    # careers-page HTML for the rare board whose token isn't the company slug.
+    resolved = ats.resolve_board(company.name, company.domain)
+    if resolved is not None:
+        source, token, jobs = resolved
+    else:
+        found = _resolve_token(company)
+        if not found:
+            return None
+        source, token = found
+        jobs = ats.fetch_jobs(source, token)
     best: QualifiedLead | None = None
-    for job in ats.fetch_jobs(source, token):
+    for job in jobs:
         if qualify.title_matches(job.title) is None:
             continue
         score, tier, evidence = qualify.score_signal(job.title, job.posted_at)
