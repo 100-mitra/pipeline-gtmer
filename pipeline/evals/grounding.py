@@ -37,25 +37,40 @@ def check_email(
     if not claims_obj.claims:
         return GroundingResult(passed=True, claims=[])
 
+    # The verified hiring signal (the ATS job posting) is a first-class supported
+    # fact — it's WHY this is a lead. The brief is a website scrape that won't
+    # mention the posting, so without this the email's core personalization
+    # ("X is hiring an SDR") would be falsely flagged as unsupported.
+    lead = db.get_lead(lead_id)
+    signal_src = ""
+    if lead and lead.get("job_title") and lead.get("job_title") != "manual":
+        signal_src = (
+            "(source: verified public job posting)\n"
+            f"{lead.get('company_name') or 'The company'} is currently hiring for the "
+            f"role: {lead['job_title']}."
+        )
+
     results: list[GroundingClaim] = []
     for claim in claims_obj.claims:
         emb = embeddings.embed_query(claim)
         chunks = db.match_chunks(lead_id, emb, 3)
-        if not chunks:
-            # No retrievable evidence ⇒ unsupported by definition. Never ask the
-            # judge to entail a claim against an empty snippet block — it can
-            # rubber-stamp "supported", which would defeat the whole point.
+        parts = ([signal_src] if signal_src else []) + [
+            f"(source: {c['url']})\n{c['content']}" for c in chunks
+        ]
+        if not parts:
+            # No evidence at all ⇒ unsupported. Never entail against an empty
+            # snippet block — the judge can rubber-stamp "supported".
             results.append(GroundingClaim(claim=claim, status="unsupported", best_source=None))
             continue
-        snippets = "\n\n".join(f"(source: {c['url']})\n{c['content']}" for c in chunks)
         ent, _ = llm.parse_writer(
             Entailment,
             entail_sys,
-            f"Claim: {claim}\n\nSnippets:\n{snippets}",
+            f"Claim: {claim}\n\nSnippets:\n" + "\n\n".join(parts),
             max_tokens=200,
             budget=budget,
         )
-        results.append(GroundingClaim(claim=claim, status=ent.status, best_source=chunks[0]["url"]))
+        best = chunks[0]["url"] if chunks else "verified job posting"
+        results.append(GroundingClaim(claim=claim, status=ent.status, best_source=best))
 
     passed = not any(r.status == "unsupported" for r in results)
     return GroundingResult(passed=passed, claims=results)

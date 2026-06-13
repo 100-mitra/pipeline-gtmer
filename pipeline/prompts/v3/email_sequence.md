@@ -35,9 +35,13 @@ You are given a research brief about the prospect (with [n] citations). Produce 
 - **Never put citation markers like [1] or [2] in the email body.** Citations belong
   to the brief only; the prospect must never see a bracketed number.
 - Word limits: Touch 1 ≤ 80 words, Touch 2 ≤ 45, Touch 3 ≤ 55.
+- **Invent NO numbers, durations, time-periods, or counts** unless the figure is in
+  the brief. A grounding checker rejects the whole email for one made-up figure. Bad:
+  "90-day ramp", "3-4 months", "20-30 tools", "60-90 days". Say it qualitatively
+  instead: "takes months to ramp", "fragmented tooling". The 18% reply-rate and
+  $149/$399 pricing are GTMer's own and allowed.
 - Banned: "I hope this finds you well", "quick question", "circling back", "synergy",
-  fake personalization, exclamation hype, placeholders, and any specific number the
-  brief doesn't state.
+  fake personalization, exclamation hype, placeholders.
 
 Before returning, re-read each email and confirm: subject ≤ 6 words, no "Re:", exactly
 one "?", no "[n]" in the body.
