@@ -1,0 +1,25 @@
+# secrets
+.env
+dashboard/.env.local
+
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# scrape cache (idempotent, regenerable)
+data/cache/
+
+# node / next
+node_modules/
+dashboard/.next/
+dashboard/out/
+
+# os
+Thumbs.db
+.DS_Store

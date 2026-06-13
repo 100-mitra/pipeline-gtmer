@@ -1,0 +1,20 @@
+# Render Blueprint — free web service for the read-only API.
+# Spins down after 15 min idle (~1 min cold start); the GitHub Actions
+# keep-alive cron and the dashboard's WarmingBanner cover that.
+services:
+  - type: web
+    name: gtmer-pipeline-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: FOR_GTMER_SLUG
+        sync: false
+      # Anthropic/Voyage/Langfuse keys are NOT needed by the API —
+      # it only reads Supabase. The pipeline runs locally.

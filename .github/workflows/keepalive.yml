@@ -1,0 +1,28 @@
+name: keepalive
+
+# Two cadences:
+#   - Supabase free projects pause after 1 week idle → ping 2x/week.
+#   - Render free web services spin down after 15 min idle → ping every 15 min.
+# `|| true` everywhere so a cold-start timeout never marks the run failed
+# (GitHub auto-disables a cron after ~20 consecutive failures).
+on:
+  schedule:
+    - cron: "0 6 * * 1,4"     # Mon & Thu 06:00 UTC — Supabase keep-alive
+    - cron: "*/15 * * * *"    # every 15 min — Render keep-alive
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Supabase keep-alive
+        if: github.event.schedule == '0 6 * * 1,4' || github.event_name == 'workflow_dispatch'
+        run: |
+          curl -fsS --max-time 30 \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/runs?select=id&limit=1" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" > /dev/null || true
+
+      - name: Render keep-alive
+        if: github.event.schedule == '*/15 * * * *' || github.event_name == 'workflow_dispatch'
+        run: curl -fsS --max-time 90 "${{ secrets.RENDER_HEALTHZ_URL }}" > /dev/null || true

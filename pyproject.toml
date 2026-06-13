@@ -1,0 +1,43 @@
+[project]
+name = "gtmer-pipeline"
+version = "0.1.0"
+description = "PipelineAgent — an autonomous AI-SDR pipeline (prospect → research → write → eval), run on GTMer's own ICP."
+requires-python = ">=3.11"
+dependencies = [
+    "anthropic>=0.60",
+    "voyageai>=0.3",
+    "langgraph>=1.2.4,<1.3",          # do NOT import langgraph.prebuilt (deprecated)
+    "langchain>=1.3,<2",               # required by langfuse.langchain.CallbackHandler
+    "langfuse>=4,<5",                  # v4: CallbackHandler from langfuse.langchain
+    "pydantic>=2.7",
+    "pydantic-settings>=2.2",
+    "supabase>=2.31,<3",
+    "httpx>=0.27",
+    "beautifulsoup4>=4.12",
+    "lxml>=5",
+    "tenacity>=8.3",
+    "typer>=0.12",
+    "rich>=13",
+    "fastapi>=0.111",
+    "uvicorn[standard]>=0.30",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.5"]
+
+[project.scripts]
+gtmer = "pipeline.cli:app"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["pipeline*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
