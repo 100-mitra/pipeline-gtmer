@@ -71,8 +71,22 @@ APIs** (no auth, vendor-sanctioned):
 | Lever | `api.lever.co/v0/postings/{token}?mode=json` | ✅ public, no auth |
 | Ashby | `api.ashbyhq.com/posting-api/job-board/{token}` | ✅ public, no auth |
 
-Company universe = a hand-curated CSV of Indian B2B SaaS (`data/companies_in.csv`,
-the primary seed) + the `yc-oss` static YC dataset (filtered to India client-side).
+Company universe = a hand-curated CSV of Indian B2B SaaS (`data/companies_in.csv`)
++ the `yc-oss` static YC dataset.
+
+**Two findings from running this for real** (the kind of thing that only shows up when
+you actually build it):
+- **Token discovery by HTML-parsing fails** — most companies' careers pages are
+  JS-rendered, so the ATS board token isn't in the raw HTML. Fix: probe the ATS APIs
+  *directly* with a **guessed token** (the slug is almost always the company name), which
+  recovered Postman's Greenhouse board (7 SDR/BDR roles) and Atlan's Ashby board — both
+  invisible to HTML scraping.
+- **~90% of Indian B2B SaaS don't use Greenhouse/Lever/Ashby** — they're on
+  Workday/Darwinbox/Keka. So India-only automated sourcing caps out at ~3 leads. The
+  universe broadens to **global** B2B SaaS (a 138-vs-3,843 India/global split in YC),
+  **interleaved** so both get probed, with an **India scoring boost** so Indian leads still
+  headline the list. GTMer sells globally, so a global company hiring SDRs is a valid
+  prospect — and the 3 Indian leads (Postman, Atlan, Scribe) still rank 1/3/4.
 
 **Deliberately excluded** (documented because *judgment* is the point):
 Wellfound (DataDome — 403s all automated access), Naukri (edge-blocks non-browser
@@ -91,11 +105,28 @@ LinkedIn URLs are added **manually** for the final top-10 only.
 3. **LLM-as-judge** — Sonnet scores 5 dimensions (personalization, relevance-to-signal,
    clarity, CTA, spam-risk) + a verdict. Batched through the Anthropic **Batch API
    (50% off)** for the full run.
-4. **Judge validation** — `gtmer eval golden` runs the judge over ~20 hand-labeled emails
-   and reports verdict agreement, **Cohen's κ**, and per-dimension MAE. **Gate: κ ≥ 0.6**
-   before batch scores are trusted. Prompt-version decisions use **randomized pairwise
+4. **Judge validation** — `gtmer eval golden` runs the judge over **30 hand-labeled emails**
+   (balanced across approve/revise/reject) and reports verdict agreement, **Cohen's κ**, and
+   per-dimension MAE. **Gate: κ ≥ 0.6.** Measured: **κ = 0.85, 90% verdict agreement** — the
+   judge is trustworthy, not a vibe. Prompt-version decisions use **randomized pairwise
    comparison** (`gtmer eval pairwise`, A/B order shuffled to kill position bias), not
-   absolute scores — see `prompts/v1` vs `prompts/v2`.
+   absolute scores.
+
+## Results — the eval harness drove a 3-iteration improvement loop
+
+Three *independent* eval signals each caught a different class of problem — which is the
+whole point: no single metric is trusted alone.
+
+| Version | Change | What an eval signal caught |
+|---|---|---|
+| **v1** | baseline | LLM judge: generic, self-promotional ("18% stat reads as boilerplate") → avg ~2.5/5, mostly *reject* |
+| **v2** | lead with the prospect; cite one specific fact | **Pairwise: v2 beats v1 8/9 (89%)** — but heuristics caught a regression: 11-word subjects, fake `Re:` bumps, double CTAs |
+| **v3** | checker-framed mechanical rules | Heuristic pass **0/6 → 16/18**; grounding then exposed both real hallucinations *and* a false-negative on the (true) hiring signal → fixed grounding to treat the verified ATS posting as a source |
+
+- **12 qualified leads** sourced (3 Indian headlining: Postman 🔥, Atlan, Scribe).
+- **κ = 0.85** judge–human agreement on the 30-email golden set.
+- **v2 wins 89%** of blind pairwise vs v1 (promotion bar is 65%).
+- Total spend across every run: **~$2** of a $20 cap.
 
 ## Cost
 
@@ -144,7 +175,8 @@ uvicorn pipeline.api.main:app --port 8000           # read API
 cd dashboard ; npm install ; copy .env.local.example .env.local ; npm run dev
 ```
 
-Tests (no keys needed): `pytest -q` → 17 passing (ATS parsers, qualify regex, heuristics).
+Tests (no keys needed): `pytest -q` → **24 passing** (ATS parsers + guessed-token resolver,
+qualify regex + India boost, heuristics incl. the fake-`Re:` check).
 
 ## What I'd build next at GTMer
 
