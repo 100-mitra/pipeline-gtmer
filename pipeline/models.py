@@ -94,24 +94,14 @@ class EmailVariant(BaseModel):
 
 
 class EmailSequence(BaseModel):
-    """Writer output: 2 variants × 3 touches, grounded in the brief + job signal."""
+    """Writer output: 2 variants × 3 touches, grounded in the brief + job signal.
+
+    Shape is enforced/normalized in `writer.sequence.write_sequence` (coerce >2
+    variants to the first 2, error on <2) rather than by a strict model validator
+    — a strict validator dead-letters a lead over a harmless format quirk (e.g.
+    Haiku returning a 3rd variant), which `_exactly_two_by_three` did before."""
 
     variants: list[EmailVariant]
-
-    @field_validator("variants")
-    @classmethod
-    def _exactly_two_by_three(cls, v: list[EmailVariant]) -> list[EmailVariant]:
-        """Enforce exactly 2 variants (A and B), each with touches {1,2,3}. A
-        malformed sequence (e.g. 1 variant) would otherwise save silently and the
-        A/B eval would only ever score one side."""
-        if len(v) != 2:
-            raise ValueError(f"expected exactly 2 variants, got {len(v)}")
-        if {var.variant for var in v} != {"A", "B"}:
-            raise ValueError("variants must be labelled A and B")
-        for var in v:
-            if sorted(t.touch for t in var.touches) != [1, 2, 3]:
-                raise ValueError(f"variant {var.variant} must have touches 1,2,3")
-        return v
 
 
 # ── Evals ────────────────────────────────────────────────────────────

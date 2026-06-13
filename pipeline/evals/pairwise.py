@@ -61,8 +61,12 @@ def run(a_version: str, b_version: str, n: int = 20, seed: int = 7) -> dict:
         job = JobSignal(title=lead.get("job_title") or "hiring SDRs", url=lead.get("job_url"))
         company = lead["company_name"]
 
-        a_text = _opener(brief, job, company, a_version, budget)
-        b_text = _opener(brief, job, company, b_version, budget)
+        try:
+            a_text = _opener(brief, job, company, a_version, budget)
+            b_text = _opener(brief, job, company, b_version, budget)
+        except Exception as e:  # noqa: BLE001 — one bad generation shouldn't sink the comparison
+            pairs.append({"lead": company, "winner": "skip", "reason": f"generation failed: {e!r}"})
+            continue
 
         # Randomize presentation order to neutralize position bias.
         swap = rng.random() < 0.5
