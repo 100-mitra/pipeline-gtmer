@@ -86,7 +86,11 @@ def advance(lead_id: str, body: AdvanceRequest) -> dict:
     # Promotion to 'approved' requires every email to clear heuristics + grounding
     # and not be judge-rejected. Human still clicks the button (human-in-the-loop).
     if body.to_stage == "approved" and not _approval_eligible(lead_id):
-        raise HTTPException(409, "lead has unresolved heuristic/grounding/judge failures")
+        raise HTTPException(
+            409,
+            "This lead's drafts didn't clear the eval gate (heuristics + grounding + judge) — "
+            "the quality gate is working as designed.",
+        )
     try:
         return db.advance_stage(lead_id, body.to_stage)
     except ValueError as e:
@@ -126,12 +130,17 @@ def evals_summary() -> EvalsSummary:
 
     overalls = [e["overall"] for e in evals if e["kind"] == "judge" and e["overall"] is not None]
     runs = cli.table("runs").select("est_cost_usd").execute().data
+    # Latest golden-set κ (persisted by `gtmer eval golden`).
+    golden = (
+        cli.table("evals").select("overall").eq("kind", "golden")
+        .order("created_at", desc=True).limit(1).execute().data
+    )
     return EvalsSummary(
         leads_by_stage=counts,
         heuristic_pass_rate=rate("heuristic"),
         grounding_pass_rate=rate("grounding"),
         avg_judge_overall=round(sum(overalls) / len(overalls), 2) if overalls else None,
-        judge_kappa=None,  # populated from the golden-set run; surfaced in the dashboard text
+        judge_kappa=golden[0]["overall"] if golden else None,
         total_cost_usd=round(sum((r.get("est_cost_usd") or 0) for r in runs), 4),
     )
 

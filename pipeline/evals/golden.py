@@ -19,7 +19,9 @@ import json
 from collections import Counter
 from pathlib import Path
 
+from pipeline import db
 from pipeline.budget import BudgetGuard
+from pipeline.config import settings
 from pipeline.evals import judge
 from pipeline.models import JudgeScore
 
@@ -73,7 +75,7 @@ def run(version: str = "v1") -> dict:
     kappa = cohens_kappa(human_verdicts, judge_verdicts)
     dim_mae = {d: round(sum(errs) / n, 3) for d, errs in dim_abs_err.items()}
 
-    return {
+    result = {
         "n": n,
         "version": version,
         "verdict_agreement": round(agreement, 3),
@@ -82,3 +84,14 @@ def run(version: str = "v1") -> dict:
         "gate_pass": kappa >= 0.6,
         "est_cost_usd": round(budget.run_spent, 4),
     }
+    # Persist so the live dashboard can surface κ (it's the headline trust metric).
+    try:
+        db.save_eval(
+            lead_id=None, email_id=None, kind="golden",
+            passed=kappa >= 0.6, overall=round(kappa, 3),
+            scores={"agreement": round(agreement, 3), "n": n, "dim_mae": dim_mae},
+            judge_model=settings.judge_model, prompt_version=f"judge_rubric:{version}",
+        )
+    except Exception:  # noqa: BLE001 — persistence is best-effort; the report still returns
+        pass
+    return result

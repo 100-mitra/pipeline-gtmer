@@ -25,6 +25,7 @@ export default function EvalsPage() {
       <div className="panel">
         <h2 style={{ marginTop: 0 }}>Eval summary</h2>
         <div>
+          <span className="stat"><div className="n" style={{ color: "var(--good)" }}>{s.judge_kappa ?? "—"}</div><div className="l">judge κ vs human</div></span>
           <span className="stat"><div className="n">{pct(s.heuristic_pass_rate)}</div><div className="l">heuristic pass</div></span>
           <span className="stat"><div className="n">{pct(s.grounding_pass_rate)}</div><div className="l">grounding pass</div></span>
           <span className="stat"><div className="n">{s.avg_judge_overall ?? "—"}</div><div className="l">avg judge / 5</div></span>

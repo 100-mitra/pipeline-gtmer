@@ -334,7 +334,7 @@ Real numbers from running it on GTMer's ICP (every figure is reproducible via th
 - **12 qualified leads** sourced (3 Indian headlining: **Postman** 🔥, **Atlan**, **Scribe**).
 - **κ = 0.85** judge–human agreement on the 30-email golden set (90% exact-verdict agreement).
 - **v2 wins 89%** of blind pairwise comparisons vs v1 (promotion bar is 65%).
-- After the eval-driven loop, **6 of 8 completed leads carry approvable, grounded drafts** — the approve gate honestly filters the rest.
+- The final deliverable is **6 hand-curated leads** (3 India-headlining), **every one a company genuinely hiring a front-line SDR/BDR/ADR**, each with grounded, eval-scored drafts — the eval gate *and* a curation pass filter the rest.
 - **24 tests** passing (ATS parsers, the guessed-token resolver, qualify regex + India boost, heuristics).
 - Total spend across *everything* (source → score → 4 prompt iterations → enrichment): **~$2** of a $20 cap.
 
