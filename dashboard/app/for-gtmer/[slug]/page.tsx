@@ -25,7 +25,7 @@ export default function ForGtmerPage() {
   return (
     <>
       <div className="panel">
-        <h2 style={{ marginTop: 0 }}>10 qualified leads for GTMer</h2>
+        <h2 style={{ marginTop: 0 }}>{data.count} qualified leads for GTMer</h2>
         <p className="muted" style={{ marginBottom: 0 }}>
           Sourced from companies currently hiring SDR/BDR roles (a buying signal for an AI-SDR tool), researched with
           retrieval-grounded briefs, drafted as 3-touch sequences, and eval-scored. <b>Nothing was sent</b> — the
